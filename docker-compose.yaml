@@ -1,0 +1,9 @@
+version: '3'
+services:
+  web:
+    build: .
+    image: wikiviews
+    container_name: wikiviews
+    ports:
+      # HOST_PORT:CONTAINER_PORT
+      - "8080:8080"
