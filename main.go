@@ -22,10 +22,15 @@ type (
 	ResponseData struct {
 		Items []Item `json:"items"`
 	}
+
+	PrettyResponse struct {
+		Article string `json:"article"`
+		Views   int32  `json:"views"`
+	}
 )
 
 const (
-	baseurl = "https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article"
+	baseurl = "https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia.org/all-access/all-agents"
 )
 
 func main() {
@@ -38,7 +43,10 @@ func main() {
 }
 
 func pageviews(c echo.Context) (err error) {
-	url := fmt.Sprintf("%s/en.wikipedia.org/all-access/all-agents/Orca/monthly/20240201/20240229", baseurl)
+	article := c.QueryParam("article")
+	monthstart := c.QueryParam("monthstart")
+	monthend := c.QueryParam("monthend")
+	url := fmt.Sprintf("%s/%s/monthly/%s/%s", baseurl, article, monthstart, monthend)
 
 	tr := &http.Transport{
 		MaxIdleConns:       10,
@@ -50,7 +58,7 @@ func pageviews(c echo.Context) (err error) {
 	// Send a GET request to Wikipedia API
 	response, err := client.Get(url)
 	if err != nil {
-		fmt.Println("Error:", err)
+		log.Println("Error:", err)
 		return
 	}
 	defer response.Body.Close()
@@ -58,7 +66,7 @@ func pageviews(c echo.Context) (err error) {
 	// Read the response body
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		fmt.Println("Error reading response:", err)
+		log.Println("Error reading response:", err)
 		return
 	}
 
@@ -66,7 +74,7 @@ func pageviews(c echo.Context) (err error) {
 	var responseData ResponseData
 	err = json.Unmarshal(body, &responseData)
 	if err != nil {
-		fmt.Println("Error unmarshalling JSON:", err)
+		log.Println("Error unmarshalling JSON:", err)
 		return
 	}
 
