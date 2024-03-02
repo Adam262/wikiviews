@@ -10,6 +10,7 @@ import (
 	"wikiviews/internal/paramformatter"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 type (
@@ -25,20 +26,25 @@ type (
 	}
 
 	// PrettyResponse struct {
-	// 	Article string `json:"article"`
-	// 	Views   int32  `json:"views"`
-	// 	Month   string
+	// 	OriginalArticle   string
+	// 	FormattedfArticle string
+	// 	Views             int32
+	// 	Month             string
+	// 	Year              int8
 	// }
 )
 
 const (
-	baseurl = "https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia.org/all-access/all-agents"
+	baseUrl   = "https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia.org/all-access/all-agents"
+	userAgent = "WikiViews/1.0"
 )
 
 func main() {
 	e := echo.New()
+	// Rate limit to 20 rps
+	e.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(20)))
 
-	e.GET("/ping", pong)
+	e.GET("/healthcheck", healthcheck)
 	e.GET("/pageviews", pageviews)
 
 	log.Fatal(e.Start(":8080"))
@@ -48,15 +54,25 @@ func pageviews(c echo.Context) (err error) {
 	article := c.QueryParam("article")
 	tf := paramformatter.NewTitleFormatter()
 	titlizedArticle := tf.Run(article)
-	fmt.Println(titlizedArticle)
+	// if converted {
+	// 	log.Printf("Converted article param %s to %s", article, titlizedArticle)
+	// }
+
 	monthstart := c.QueryParam("monthstart")
 	monthend := c.QueryParam("monthend")
-	url := fmt.Sprintf("%s/%s/monthly/%s/%s", baseurl, titlizedArticle, monthstart, monthend)
+	url := fmt.Sprintf("%s/%s/monthly/%s/%s", baseUrl, titlizedArticle, monthstart, monthend)
 
 	client := httpclient.NewHttpClient()
 
-	// Send a GET request to Wikipedia API
-	response, err := client.Get(url)
+	// Create a new HTTP GET request with our User-Agent header
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("User-Agent", userAgent)
+
+	// Send the request to the Wikipedia API
+	response, err := client.Do(req)
 	if err != nil {
 		log.Println("Error:", err)
 		return
@@ -82,6 +98,8 @@ func pageviews(c echo.Context) (err error) {
 	return c.JSON(http.StatusOK, responseData.Items)
 }
 
-func pong(c echo.Context) error {
-	return c.String(http.StatusOK, "pong")
+// Healthcheck probe
+// May be used for Kubernetes liveness and readiness probes
+func healthcheck(c echo.Context) error {
+	return c.String(http.StatusOK, "ok")
 }
