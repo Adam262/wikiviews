@@ -6,7 +6,8 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"time"
+	"wikiviews/internal/httpclient"
+	"wikiviews/internal/paramformatter"
 
 	"github.com/labstack/echo/v4"
 )
@@ -23,10 +24,11 @@ type (
 		Items []Item `json:"items"`
 	}
 
-	PrettyResponse struct {
-		Article string `json:"article"`
-		Views   int32  `json:"views"`
-	}
+	// PrettyResponse struct {
+	// 	Article string `json:"article"`
+	// 	Views   int32  `json:"views"`
+	// 	Month   string
+	// }
 )
 
 const (
@@ -44,16 +46,14 @@ func main() {
 
 func pageviews(c echo.Context) (err error) {
 	article := c.QueryParam("article")
+	tf := paramformatter.NewTitleFormatter()
+	titlizedArticle := tf.Run(article)
+	fmt.Println(titlizedArticle)
 	monthstart := c.QueryParam("monthstart")
 	monthend := c.QueryParam("monthend")
-	url := fmt.Sprintf("%s/%s/monthly/%s/%s", baseurl, article, monthstart, monthend)
+	url := fmt.Sprintf("%s/%s/monthly/%s/%s", baseurl, titlizedArticle, monthstart, monthend)
 
-	tr := &http.Transport{
-		MaxIdleConns:       10,
-		IdleConnTimeout:    30 * time.Second,
-		DisableCompression: true,
-	}
-	client := &http.Client{Transport: tr}
+	client := httpclient.NewHttpClient()
 
 	// Send a GET request to Wikipedia API
 	response, err := client.Get(url)
