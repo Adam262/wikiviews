@@ -3,30 +3,40 @@ package paramformatter
 import (
 	"regexp"
 	"strings"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 type TitleFormatter struct{}
 
-func (pf *TitleFormatter) Run(param string) string {
-	pattern := `^(\w+\_)+\w+$`
+func (pf *TitleFormatter) IsSingleWord(param string) bool {
+	single_word_re := regexp.MustCompile(`^[[:alpha:]]+$`)
 
-	re := regexp.MustCompile(pattern)
-
-	if re.MatchString(param) {
-		return pf.titleize(param)
-	} else {
-		return param
-	}
-
+	return single_word_re.MatchString(param)
 }
 
-func (pf *TitleFormatter) titleize(param string) string {
-	chars := strings.Split(param, "_")
-	for i, c := range chars {
-		chars[i] = strings.Title(strings.ToLower(c))
+func (pf *TitleFormatter) IsMultiWord(param string) bool {
+	multi_word_pattern := `^(\w+\_)+\w+$`
+	multi_word_re := regexp.MustCompile(multi_word_pattern)
+
+	return multi_word_re.MatchString(param)
+}
+
+func (pf *TitleFormatter) Run(param string, firstWordOnly bool) string {
+	c := cases.Title(language.Und)
+	firstWordTitle := c.String(strings.ToLower(param))
+
+	if firstWordOnly {
+		return firstWordTitle
 	}
 
-	return strings.Join(chars, "_")
+	words := strings.Split(param, "_")
+	for i, w := range words {
+		words[i] = c.String(strings.ToLower(w))
+	}
+
+	return strings.Join(words, "_")
 }
 
 func NewTitleFormatter() *TitleFormatter {
