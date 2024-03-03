@@ -2,7 +2,7 @@
 
 ## Overview
 
-WikiViews is a simple Golang server with a single JSON endpoint, `/pageviews`. Its responsibility is to respond to user queries for monthly pageview data for English-language Wikipedia articles. Although users can alternatively query the Wikipedia API directly, WikiViews provides several enhancements such as a simplied interface, response caching, param validation and sensible formatting of params that would otherwise be invalid.
+WikiViews is a simple Golang server with a single JSON endpoint, `/pageviews`. Its responsibility is to respond to user queries for monthly pageview data for English-language Wikipedia articles. Although users can alternatively query the Wikipedia API directly, WikiViews provides several enhancements such as a simplied interface and param validation.
 
 ## Dependencies
 
@@ -105,44 +105,37 @@ I hard-coded three other params (from the Wikipedia endpoint) to simplify the us
 * *agent*. This param filters by page agent, e.g.: *user*, *automated* or *spider*. I hard-coded to *all-agents*.
 * *granularity*. This param sets the time unit for the response data, e.g.: *daily* or *monthly*. I hard-coded to *monthly*.
 
-##### The `Michael_Phelps` vs. `Man_pages` problem
+##### Validations
 
-At a minimum, I knew I needed to implement validation on all passed-in params. Any of these requests will return a sensible error message:
+There are several simple validation on the article param:
 
-###### Invalid and uncorrectable article*
+* empty article
+* article with a forbidden character
+* article beginning with a lower-case letter
 
-The below article does not exist, even if I try to correct it to `Michaelphelps`. The Wikipedia endpoint returns a 404, that I wrap and pass on with a sensible error message
+Another common case is an article that returns a 404 from the Wikipedia endpoint, because their API cannot find any references to the article.
 
-```bash
-curl -X GET localhost:8080/pageviews\?article\=michaelphelps\&monthstart=20240201\&monthend=20240229
-```
+In these cases, I added validation that suggests a title case article. That is, if the user entered `MICHAEL_PHELPS`, the validation would suggest `Michael_Phelps` or `Michael_phelps`. I include both because both may be valid (and handled by redirection in the Wikipedia UI) and it is impossible to know which one the user intended. For example:
 
-###### Invalid date
+* `Michael_Phelps` is the canonical Wikipedia article, but `Michael_phelps` is valid in the API and redirects in the UI
+* `Man_page` is the canonical Wikipedia article. `Man_Page` redirects in the UI but is invalid in API. If a user entered it in WikiViews, they would get a suggestion to try `Man_page` or `Man_Page`.
 
-Below is entered an invalid date. The Wikipedia endpoint returns a 404, that I wrap and pass on with a sensible error message
+A V2 might be to fall back on Wikipedia search, e.g.:
 
-###### Correctable article
-
-In iterating on this project, I noticed that the Wikipedia API is quite brittle. The UI provides Search, which is forgiving of variations such as `Michael_Phelps`, `michael_phelps`, `MICHAEL_PHELPS`; they all return a top hit of the correct article with key `Michael_Phelps`. But the Pageviews API is way more strict - most variations will return a 404
-
-My first solution was to simply correct the input. But that ran into what I call the `Michael_Phelps vs Man_pages` problem. That is, most valid article titles fall into one of the below three forms:
-
-* *Single Word* This is easy. Just conver the input to title case, e.g.: *Dog* or *Orca*
-* *Many Words, Proper Noun* These titles should have all words in title case, e.g.: *Michael_Phelps* or *New_York_City*
-* *Many Words, Non-Proper Noun* These titles should have only the first word in title case, e.g.: *Man_page* or *Killer_whale*
-
-So the issue this raises is that it is impossible to know if the intended form of an article should be `One_Two` or `One_two`. I considered returning both forms. But both forms do not always exist, although in some cases they do, because of redirects - e.g. `Michael_Phelps` and `Michael_phelps` are both valid queries to the Pageviews endpoint, with different results.
-
-So my solution is to fall back on Wikipedia search
-
-* Validate input article with simple checks, e.g, against forbidden characters
+* Continue validate input article with simple checks, e.g, against forbidden characters
 * Pass it to the Pageviews endpoint
 * If the response is a 404, additionally pass the query to the Search endpoint
 * Return the top hit, thereby giving the user the option to requery with the correct title
 
+Although I found some edge cases, this approach would likely be less brittle than the API.
+
+###### Invalid date
+
+For an nvalid date, the Wikipedia endpoint returns a 404. I wrap it and pass it on with a sensible error message
+
 ## Troubleshooting
 
-Requests are logged. Troubleshooting can be done by tailing docker logs, e.g.:
+Both requests to Wikipedia, user requests and errors are logged. Troubleshooting can be done by tailing docker logs, e.g.:
 
 ```bash
 docker-compose logs -f

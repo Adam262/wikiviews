@@ -56,10 +56,6 @@ func main() {
 func pageviews(c echo.Context) (err error) {
 	article := c.QueryParam("article")
 	tv := paramvalidator.NewTitleValidator()
-	// titlizedArticle := tf.Run(article)
-	// if converted {
-	// 	log.Printf("Converted article param %s to %s", article, titlizedArticle)
-	// }
 	ok, err := tv.Run(article)
 	if !ok {
 		log.Println("Error:", err)
@@ -75,15 +71,16 @@ func pageviews(c echo.Context) (err error) {
 	// Create a new HTTP GET request with our User-Agent header
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		log.Println("Error:", err)
+		log.Println("error:", err)
 		return err
 	}
 	req.Header.Set("User-Agent", userAgent)
+	log.Printf("sending GET request: %s\n", req.URL)
 
 	// Send the request to the Wikipedia API
 	response, err := client.Do(req)
 	if err != nil {
-		log.Println("Response Error:", err)
+		log.Println("response error:", err)
 		return
 	}
 	defer response.Body.Close()
@@ -91,7 +88,7 @@ func pageviews(c echo.Context) (err error) {
 	// Read the response body
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		log.Println("Error reading response:", err)
+		log.Println("error reading response:", err)
 		return
 	}
 
@@ -108,10 +105,10 @@ func pageviews(c echo.Context) (err error) {
 			fullMessage := fmt.Sprintf(baseMessage, article, titleOptions)
 			err = fmt.Errorf(fullMessage)
 		} else {
-			err = fmt.Errorf("No results found")
+			err = fmt.Errorf("no results found")
 		}
 
-		log.Println("Error:", err)
+		log.Println("error:", err)
 		return c.JSON(http.StatusNotFound, errorMessage((err)))
 	}
 
@@ -119,7 +116,7 @@ func pageviews(c echo.Context) (err error) {
 	var responseData ResponseData
 	err = json.Unmarshal(body, &responseData)
 	if err != nil {
-		log.Println("Error unmarshalling JSON:", err)
+		log.Println("error unmarshalling JSON:", err)
 		return
 	}
 
