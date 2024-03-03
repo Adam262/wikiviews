@@ -56,16 +56,28 @@ func main() {
 func pageviews(c echo.Context) (err error) {
 	article := c.QueryParam("article")
 	tv := paramvalidator.NewTitleValidator()
-	ok, err := tv.Run(article)
-	if !ok {
-		log.Println("Error:", err)
+	tvok, err := tv.Run(article)
+	if !tvok {
+		log.Println("error:", err)
 		return c.JSON(http.StatusBadRequest, errorMessage((err)))
 	}
 
-	monthstart := c.QueryParam("monthstart")
-	monthend := c.QueryParam("monthend")
-	url := fmt.Sprintf("%s/%s/monthly/%s/%s", baseUrl, article, monthstart, monthend)
+	date := c.QueryParam("date")
+	dv := paramvalidator.NewDateValidator()
+	dvok, err := dv.Run(date)
+	if !dvok {
+		log.Println("error:", err)
+		return c.JSON(http.StatusBadRequest, errorMessage((err)))
+	}
 
+	df := paramformatter.NewDateFormatter()
+	monthStart, monthEnd, err := df.Run(date)
+	if err != nil {
+		log.Println("error:", err)
+		return c.JSON(http.StatusBadRequest, errorMessage((err)))
+	}
+
+	url := fmt.Sprintf("%s/%s/monthly/%s/%s", baseUrl, article, monthStart, monthEnd)
 	client := httpclient.NewHttpClient()
 
 	// Create a new HTTP GET request with our User-Agent header

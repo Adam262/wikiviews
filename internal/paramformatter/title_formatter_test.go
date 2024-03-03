@@ -38,7 +38,7 @@ func TestTitleFormatter_Run(t *testing.T) {
 		actualNewParam := formatter.Run(tc.param, tc.firstWordOnly)
 
 		if actualNewParam != tc.newParam {
-			t.Errorf("TestFormatter.Run(%q) returns new param %q; Expected %q", tc.param, actualNewParam, tc.newParam)
+			t.Errorf("TestTitleFormatter.Run(%q) returns new param %q; Expected %q", tc.param, actualNewParam, tc.newParam)
 		}
 	}
 }

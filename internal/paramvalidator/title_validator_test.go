@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestTitleValiadator_Run(t *testing.T) {
+func TestTitleValidator_Run(t *testing.T) {
 	validator := NewTitleValidator()
 
 	testCases := []struct {

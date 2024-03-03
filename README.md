@@ -56,23 +56,19 @@ The title of the Wikipedia article. It must follow the [naming conventions](http
 * A space between words must be entered as a single underscore
 * These characters are forbidden anywhere in the article title: `# < > [ ] { } |`
 
-##### monthstart (int8)
+##### date (int8)
 
-The date of the first day of the target month, expressed as:
-
-```
-# e.g. 20231101 is November 1, 2023
-YYYYMMDD
-```
-
-##### monthend (int8)
-
-The date of the last day of the target month, expressed as:
+The target year and month to query, expressed as:
 
 ```bash
-# e.g. 20231130 is November 30, 2023
+# e.g. 202311 is November, 2023
 YYYYMMDD
 ```
+
+This format is an optimization of the underlying Wikipedia enpoint, which expects separate params for the start and end of the monthly period. That is, to express `November 2023`, the user would need two path parameters in their query:
+
+* start -- `20241101`
+* end -- `20241130`
 
 #### Sample Request and Response
 
@@ -131,7 +127,57 @@ Although I found some edge cases, this approach would likely be less brittle tha
 
 ###### Invalid date
 
-For an nvalid date, the Wikipedia endpoint returns a 404. I wrap it and pass it on with a sensible error message
+The Wikipedia endpoint is also brittle for date inputs. For monthly granularity, it turns out that the user must enter below exactly:
+
+* for `start`, the first day of the month as YYYYMMDD
+* for `end`, the last day of the same month as YYYYMMDD
+
+Any variations from these rules will return a 404 in my testing. For example:
+
+Valid month period -- Jan 1, 2024 - Jan 31, 2024
+
+```bash
+adambarcan in Code on main ❯ curl -s -X 'GET' \
+  'https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia.org/all-access/all-agents/Man_page/monthly/20240101/20240131' \
+  -H 'accept: application/json' | jq '.items[0].views'
+11482
+```
+
+Invalid month period -- Jan 1, 2024 - Jan 30, 2024
+
+```bash
+adambarcan in Code on main ❯ curl -s -X 'GET' \
+  'https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia.org/all-access/all-agents/Man_page/monthly/20240101/20240130' \
+  -H 'accept: application/json' | jq '.items[0].views'
+null
+```
+
+Invalid month period -- Jan 2, 2024 - Jan 31, 2024
+
+```bash
+adambarcan in Code on main ❯ curl -s -X 'GET' \
+  'https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia.org/all-access/all-agents/Man_page/monthly/20240102/20240131' \
+  -H 'accept: application/json' | jq '.items[0].views'
+null
+```
+
+Invalid month period -- Jan 2, 2024 - Feb 2, 2024
+
+```bash
+adambarcan in Code on main ❯ curl -s -X 'GET' \
+  'https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia.org/all-access/all-agents/Man_page/monthly/20240102/20240202' \
+  -H 'accept: application/json' | jq '.items[0].views'
+null
+```
+
+My solution is to only ask for a single date input, in the form
+
+```bash
+# e.g., 202402
+YYYYMM
+```
+
+I then map this to the approriate `start` and `end` paramns when calling to the Wikipedia endpoint. There is validation for empty or mal-formed params, and I account for leap year.
 
 ## Troubleshooting
 

@@ -10,20 +10,20 @@ import (
 
 type TitleFormatter struct{}
 
-func (pf *TitleFormatter) IsSingleWord(param string) bool {
+func (tf *TitleFormatter) IsSingleWord(param string) bool {
 	single_word_re := regexp.MustCompile(`^[[:alpha:]]+$`)
 
 	return single_word_re.MatchString(param)
 }
 
-func (pf *TitleFormatter) IsMultiWord(param string) bool {
+func (tf *TitleFormatter) IsMultiWord(param string) bool {
 	multi_word_pattern := `^(\w+\_)+\w+$`
 	multi_word_re := regexp.MustCompile(multi_word_pattern)
 
 	return multi_word_re.MatchString(param)
 }
 
-func (pf *TitleFormatter) Run(param string, firstWordOnly bool) string {
+func (tf *TitleFormatter) Run(param string, firstWordOnly bool) string {
 	c := cases.Title(language.Und)
 	firstWordTitle := c.String(strings.ToLower(param))
 
