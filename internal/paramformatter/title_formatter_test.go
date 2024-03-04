@@ -32,6 +32,11 @@ func TestTitleFormatter_Run(t *testing.T) {
 		{"MAN_PAGE", false, "Man_Page"},
 		{"Orca", true, "Orca"},
 		{"orca", false, "Orca"},
+		{"call_of_the_wild", false, "Call_of_the_Wild"},
+		{"call_of_the_wild", true, "Call_of_the_wild"},
+		{"Call_Of_the_wild", false, "Call_of_the_Wild"},
+		{"on_golden_pond", false, "On_Golden_Pond"},
+		{"On_golden_pond", true, "On_golden_pond"},
 	}
 
 	for _, tc := range testCases {

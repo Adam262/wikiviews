@@ -1,6 +1,7 @@
 package paramformatter
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -9,6 +10,8 @@ import (
 )
 
 type TitleFormatter struct{}
+
+const alwaysLowerWord = "a an and in of on the to"
 
 func (tf *TitleFormatter) IsSingleWord(param string) bool {
 	single_word_re := regexp.MustCompile(`^[[:alpha:]]+$`)
@@ -31,12 +34,23 @@ func (tf *TitleFormatter) Run(param string, firstWordOnly bool) string {
 		return firstWordTitle
 	}
 
+	// Return title case phrase
 	words := strings.Split(param, "_")
 	for i, w := range words {
-		words[i] = c.String(strings.ToLower(w))
+		lc := strings.ToLower(w)
+		// But keep some words always lower case except when they are the first word in a title
+		if w != words[0] && tf.isAlwaysLowerWord(lc) {
+			words[i] = lc
+		} else {
+			words[i] = c.String(strings.ToLower(w))
+		}
 	}
-
+	fmt.Println(words)
 	return strings.Join(words, "_")
+}
+
+func (tf *TitleFormatter) isAlwaysLowerWord(word string) bool {
+	return strings.Contains(alwaysLowerWord, " "+word+" ")
 }
 
 func NewTitleFormatter() *TitleFormatter {

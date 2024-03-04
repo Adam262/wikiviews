@@ -116,7 +116,15 @@ In these cases, I added validation that suggests a title case article. That is, 
 * `Michael_Phelps` is the canonical Wikipedia article, but `Michael_phelps` is valid in the API and redirects in the UI
 * `Man_page` is the canonical Wikipedia article. `Man_Page` redirects in the UI but is invalid in API. If a user entered it in WikiViews, they would get a suggestion to try `Man_page` or `Man_Page`.
 
-A V2 might be to fall back on Wikipedia search, e.g.:
+Another edge case is a title that contains small words such as "of" or "the". Like any other word, these are upper case when they are the first word of the title. But they are lower case when they fall in any other position. So I handled them in my title suggestion too, e.g.
+
+```bash
+❯ curl -X GET -H 'Accept: application/json' -H 'Content-Type: application/json' localhost:8080/pageviews\?article\=Call_Of_the_wild\&date=202401
+
+{"error":"error: query for article param: Call_Of_the_wild did not return any results. Consider titlizing article param as Call_of_the_wild or Call_of_the_Wild."}
+```
+
+This validation got complicated. A V2 would be to fall back on Wikipedia search, e.g.:
 
 * Continue validate input article with simple checks, e.g, against forbidden characters
 * Pass it to the Pageviews endpoint
