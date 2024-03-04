@@ -32,7 +32,7 @@ const (
 	userAgent = "WikiViews/1.0"
 )
 
-func (pf *PageviewsHandler) List(c echo.Context) (err error) {
+func (ph *PageviewsHandler) List(c echo.Context) (err error) {
 	// Query escape all incoming article params
 	article := url.QueryEscape(c.QueryParam("article"))
 

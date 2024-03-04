@@ -10,10 +10,12 @@ WikiViews is Dockerized. Its only dependency for running locally as a Docker con
 
 ## Getting Started
 
+### Via Docker Compose
+
 To run the project locally, git clone this repo and run the below command from within the repo:
 
 ```bash
-docker-compose up --build -d
+docker-compose up -d 
 docker-compose logs -f
 ```
 
@@ -23,11 +25,33 @@ To stop the project
 docker-compose down
 ```
 
+### Via local server
+
 WikiViews may also be run locally without Docker for faster iteration. Local development takes advantage of the [air Go package](https://github.com/cosmtrek/air) for live reload.
 
 ```bash
 go install github.com/cosmtrek/air@latest
 make run
+```
+
+### Running tests
+
+Run unit tests via:
+
+```bash
+make test
+```
+
+### Vetting and package management
+
+Other Make targets are exposed for local development
+
+```bash
+# Run Golang compile checks
+make vet
+
+# Reconcile modules and vendorize dependencies
+make mod
 ```
 
 ## API
@@ -37,7 +61,7 @@ make run
 This method is a simple health check. It may be used for Kubernetes liveness and readiness probes.
 
 ```
-curl -X GET http://localhost:8080/ping
+curl -X GET http://localhost:8080/healthcheck
 
 $ pong
 ```
@@ -73,13 +97,13 @@ This format is an optimization of the underlying Wikipedia enpoint, which expect
 #### Sample Request and Response
 
 ```bash
-curl -X GET localhost:8080/pageviews\?article\=michael_phelps\&monthstart=20240201\&monthend=20240229
+curl -X GET localhost:8080/pageviews\?article\=michael_phelps\&date=20240201
 ```
 
 The response is a JSON-ified list of response objects, containing data as the article name, time period and pageview count.
 
 ```bash
-[{"project":"en.wikipedia","article":"Michael_Phelps","granularity":"monthly","timestamp":"2024020100","views":125860}]
+[{"article":"Michael_Phelps","timestamp":"2024020100","views":125860}]
 ```
 
 #### Endpoint Design Decisions
@@ -124,14 +148,12 @@ Another edge case is a title that contains small words such as "of" or "the". Li
 {"error":"error: query for article param: Call_Of_the_wild did not return any results. Consider titlizing article param as Call_of_the_wild or Call_of_the_Wild."}
 ```
 
-This validation got complicated. A V2 would be to fall back on Wikipedia search, e.g.:
+This validation is a best effort for V1, but a V2 would be to fall back on Wikipedia search, e.g.:
 
 * Continue validate input article with simple checks, e.g, against forbidden characters
 * Pass it to the Pageviews endpoint
 * If the response is a 404, additionally pass the query to the Search endpoint
 * Return the top hit, thereby giving the user the option to requery with the correct title
-
-Although I found some edge cases, this approach would likely be less brittle than the API.
 
 ###### Invalid date
 
@@ -189,7 +211,7 @@ I then map this to the approriate `start` and `end` paramns when calling to the 
 
 ## Troubleshooting
 
-Both requests to Wikipedia, user requests and errors are logged. Troubleshooting can be done by tailing docker logs, e.g.:
+Requests to Wikipedia, user requests and errors are logged. Troubleshooting can be done by tailing docker logs, e.g.:
 
 ```bash
 docker-compose logs -f
@@ -197,12 +219,14 @@ docker-compose logs -f
 
 ## Performance
 
+A V2 optimization would be to cache requests.
+
 ## Security
 
-All Wikipedia endpoints used are accesible without authentication. For simplicity, V1 of this project is also accessible without auth. A V2 could implement auth.
+Given all Wikipedia endpoints used are accesible without authentication, V1 of this project is also accessible without auth.
 
 There is rate-limiting at 20 requests per second.
 
 ## Availability
 
-V1 of this project runs as a single web server. If deployed to production, we would use a load-balancer and multiple replicas to ensure high availability. There is a /healthcheck endpoint that may be used for Kubernetes liveness and readiness probes.
+V1 of this project runs as a single web server. If deployed to production, we would use a load-balancer and multiple replicas to ensure high availability. There is a `/healthcheck` endpoint that may be used for Kubernetes liveness and readiness probes.
