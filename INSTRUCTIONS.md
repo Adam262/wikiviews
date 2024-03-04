@@ -37,31 +37,3 @@ After you’re done,
 1. Email Rachel a link
 
 Note that we will not be looking at commit history or commit messages.
-
-## To do
-
-- Test coverage - ~
-  - Should solve Michael_Phelps v Michael_phelps. Return both?
-    - yes, throw out null, otherwise return both as pretty item
-  - Orca - Done
-  - Man_page - Done
-- Docs
-- Makefile? - DONE
-- CLI with flags
-  - this would make it easier to validate date
-  - but start with just year query param - validate it is YYYY
-  - month query param - accept Feb, February,
-- Error handling - this is pretty good but should wrap a 404 if title is say: ddffdfd
-  - v2 would add search for that
-- Performance
-  - No idea
-  - Cache in redis?
-    - Michael_Phelps202402
-      - Handle leap year
-- HA
-  - replica count ?
-  - add note saying v2 is on k8s with load balancer
-  - Hard in Docker to do this. How about a health check
-- Security
-  - Auth? Not needed, there is no auth to API
-  - handle api keys  - NONE

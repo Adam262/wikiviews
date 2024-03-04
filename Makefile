@@ -19,3 +19,7 @@ mod:
 	go mod tidy
 	go mod verify
 	go mod vendor
+
+.PHONY: build
+build: vet test
+	docker build . --tag wikiviews

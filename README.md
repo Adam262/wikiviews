@@ -4,9 +4,11 @@
 
 WikiViews is a simple Golang server with a single JSON endpoint, `/pageviews`. Its responsibility is to respond to user queries for monthly pageview data for English-language Wikipedia articles. Although users can alternatively query the Wikipedia API directly, WikiViews provides several enhancements such as a simplied interface and param validation.
 
+See [project instructions](./INSTRUCTIONS.md)
+
 ## Dependencies
 
-WikiViews is Dockerized. Its only dependency for running locally as a Docker container is [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+WikiViews is Dockerized. Its only dependency for running locally as a Docker container is [Docker Desktop](https://www.docker.com/products/docker-desktop/). To develop on your machine without Docker, [Golang](https://go.dev/doc/install) is required.
 
 ## Getting Started
 
@@ -15,14 +17,21 @@ WikiViews is Dockerized. Its only dependency for running locally as a Docker con
 To run the project locally, git clone this repo and run the below command from within the repo:
 
 ```bash
-docker-compose up -d 
-docker-compose logs -f
-```
+# Start the API server (builds a Docker image if needed). It is exposed to port :8080
+❯ docker-compose up -d 
 
-To stop the project
+# Run a health check. Note it may take a few seconds for the server to be healthy and the port exposed
+# During this time, you may see the response: url: (56) Recv failure: Connection reset by peer
+❯ curl -X GET http://localhost:8080/healthcheck
 
-```bash
-docker-compose down
+# Tail logs
+❯ docker-compose logs -f
+
+# Gracefully kill the server
+❯ docker-compose down
+
+# Build a Docker image only without running it 
+❯ make build
 ```
 
 ### Via local server
@@ -30,8 +39,8 @@ docker-compose down
 WikiViews may also be run locally without Docker for faster iteration. Local development takes advantage of the [air Go package](https://github.com/cosmtrek/air) for live reload.
 
 ```bash
-go install github.com/cosmtrek/air@latest
-make run
+❯ go install github.com/cosmtrek/air@latest
+❯ make run
 ```
 
 ### Running tests
@@ -39,7 +48,7 @@ make run
 Run unit tests via:
 
 ```bash
-make test
+❯ make test
 ```
 
 ### Vetting and package management
@@ -48,10 +57,10 @@ Other Make targets are exposed for local development
 
 ```bash
 # Run Golang compile checks
-make vet
+❯ make vet
 
 # Reconcile modules and vendorize dependencies
-make mod
+❯ make mod
 ```
 
 ## API
@@ -60,10 +69,9 @@ make mod
 
 This method is a simple health check. It may be used for Kubernetes liveness and readiness probes.
 
-```
-curl -X GET http://localhost:8080/healthcheck
-
-$ pong
+```bash
+❯ curl -X GET http://localhost:8080/healthcheck
+ok
 ```
 
 ### /pageviews
@@ -76,7 +84,7 @@ This endpoint accepts JSON queries to the [Wikipedia Pageviews REST API](https:/
 
 The title of the Wikipedia article. It must follow the [naming conventions](https://en.wikipedia.org/wiki/Wikipedia:Naming_conventions_(technical_restrictions)) defined by Wikipedia, which can be summarized as:
 
-* The title must begin with a capital lettter. Any additional words in the title may be either capital or lower-case
+* The title must begin with a capital letter. Any additional words in the title may be either capital or lower-case
 * A space between words must be entered as a single underscore
 * These characters are forbidden anywhere in the article title: `# < > [ ] { } |`
 
@@ -86,23 +94,22 @@ The target year and month to query, expressed as:
 
 ```bash
 # e.g. 202311 is November, 2023
-YYYYMMDD
+YYYYMM
 ```
 
-This format is an optimization of the underlying Wikipedia enpoint, which expects separate params for the start and end of the monthly period. That is, to express `November 2023`, the user would need two path parameters in their query:
+This format is an optimization of the underlying Wikipedia endpoint, which expects separate params for the start and end of the monthly period. That is, to express `November 2023`, the Wikipedia API caller would need two path parameters in their query:
 
-* start -- `20241101`
-* end -- `20241130`
+* start — `20241101`
+* end — `20241130`
+
+See [Validations — Date Param](./VALIDATIONS_DEEP_DIVE.md#date-param) for more discussion and examples.
 
 #### Sample Request and Response
 
 ```bash
-curl -X GET localhost:8080/pageviews\?article\=michael_phelps\&date=20240201
-```
+❯ curl -X GET localhost:8080/pageviews\?article\=MichaeL_Phelps\&date=202402
 
-The response is a JSON-ified list of response objects, containing data as the article name, time period and pageview count.
-
-```bash
+# The response is a JSON-ified list of response objects, containing data as the article name, time period and pageview count.
 [{"article":"Michael_Phelps","timestamp":"2024020100","views":125860}]
 ```
 
@@ -114,8 +121,8 @@ I made several design decisions in V1 of the endpoint for the sake of simplifyin
 
 I made the decision to only query on English-language articles. This decision had two benefits:
 
-* Removed an additional param -- *project* -- that users would otherwise need to pass in
-* Simplied the regex for validating article titles by removing the need to deal with non-English characters
+* Removed an additional param — *project* — that users would otherwise need to pass in
+* Simplified the regex for validating article titles by removing the need to deal with non-English characters
 
 ##### Hard-code other params
 
@@ -127,103 +134,38 @@ I hard-coded three other params (from the Wikipedia endpoint) to simplify the us
 
 ##### Validations
 
-There are several simple validation on the article param:
-
-* empty article
-* article with a forbidden character
-* article beginning with a lower-case letter
-
-Another common case is an article that returns a 404 from the Wikipedia endpoint, because their API cannot find any references to the article.
-
-In these cases, I added validation that suggests a title case article. That is, if the user entered `MICHAEL_PHELPS`, the validation would suggest `Michael_Phelps` or `Michael_phelps`. I include both because both may be valid (and handled by redirection in the Wikipedia UI) and it is impossible to know which one the user intended. For example:
-
-* `Michael_Phelps` is the canonical Wikipedia article, but `Michael_phelps` is valid in the API and redirects in the UI
-* `Man_page` is the canonical Wikipedia article. `Man_Page` redirects in the UI but is invalid in API. If a user entered it in WikiViews, they would get a suggestion to try `Man_page` or `Man_Page`.
-
-Another edge case is a title that contains small words such as "of" or "the". Like any other word, these are upper case when they are the first word of the title. But they are lower case when they fall in any other position. So I handled them in my title suggestion too, e.g.
-
-```bash
-❯ curl -X GET -H 'Accept: application/json' -H 'Content-Type: application/json' localhost:8080/pageviews\?article\=Call_Of_the_wild\&date=202401
-
-{"error":"error: query for article param: Call_Of_the_wild did not return any results. Consider titlizing article param as Call_of_the_wild or Call_of_the_Wild."}
-```
-
-This validation is a best effort for V1, but a V2 would be to fall back on Wikipedia search, e.g.:
-
-* Continue validate input article with simple checks, e.g, against forbidden characters
-* Pass it to the Pageviews endpoint
-* If the response is a 404, additionally pass the query to the Search endpoint
-* Return the top hit, thereby giving the user the option to requery with the correct title
-
-###### Invalid date
-
-The Wikipedia endpoint is also brittle for date inputs. For monthly granularity, it turns out that the user must enter below exactly:
-
-* for `start`, the first day of the month as YYYYMMDD
-* for `end`, the last day of the same month as YYYYMMDD
-
-Any variations from these rules will return a 404 in my testing. For example:
-
-Valid month period -- Jan 1, 2024 - Jan 31, 2024
-
-```bash
-adambarcan in Code on main ❯ curl -s -X 'GET' \
-  'https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia.org/all-access/all-agents/Man_page/monthly/20240101/20240131' \
-  -H 'accept: application/json' | jq '.items[0].views'
-11482
-```
-
-Invalid month period -- Jan 1, 2024 - Jan 30, 2024
-
-```bash
-adambarcan in Code on main ❯ curl -s -X 'GET' \
-  'https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia.org/all-access/all-agents/Man_page/monthly/20240101/20240130' \
-  -H 'accept: application/json' | jq '.items[0].views'
-null
-```
-
-Invalid month period -- Jan 2, 2024 - Jan 31, 2024
-
-```bash
-adambarcan in Code on main ❯ curl -s -X 'GET' \
-  'https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia.org/all-access/all-agents/Man_page/monthly/20240102/20240131' \
-  -H 'accept: application/json' | jq '.items[0].views'
-null
-```
-
-Invalid month period -- Jan 2, 2024 - Feb 2, 2024
-
-```bash
-adambarcan in Code on main ❯ curl -s -X 'GET' \
-  'https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia.org/all-access/all-agents/Man_page/monthly/20240102/20240202' \
-  -H 'accept: application/json' | jq '.items[0].views'
-null
-```
-
-My solution is to only ask for a single date input, in the form
-
-```bash
-# e.g., 202402
-YYYYMM
-```
-
-I then map this to the approriate `start` and `end` paramns when calling to the Wikipedia endpoint. There is validation for empty or mal-formed params, and I account for leap year.
+I employed several validations and formatters for both article and date. Please see [Validations Deep Dive](./VALIDATIONS_DEEP_DIVE.md)
 
 ## Troubleshooting
 
 Requests to Wikipedia, user requests and errors are logged. Troubleshooting can be done by tailing docker logs, e.g.:
 
 ```bash
-docker-compose logs -f
+❯ docker-compose logs -f
 ```
 
 ## Performance
 
-A V2 optimization would be to cache requests.
+A V2 optimization would be to cache requests and pageviews in a Redis database. A schema could be:
+
+* Key - `Article_YYYY_MM` string
+* Value - `Views` int
+
+```bash
+{
+  "Michael_Phelps_2024_02": 125860,
+  "Michael_Phelps_2024_01": 168202,
+  ...and_so on
+}
+```
+
+Upon receiving an incoming query, WikiViews would first check the cache. If there is a cache hit, WikiViews would respond to the request without needing a Wikipedia API call. If there is a miss, WikiViews would query the Wikipedia API, and write to the cache before responding to the user.
 
 ## Security
 
-Given all Wikipedia endpoints used are accesible without authentication, V1 of this project is also accessible without auth.
+Given all Wikipedia endpoints used are accessible without authentication, V1 of this project is also accessible without auth.
+
+All user article param input is html-escaped.
 
 There is rate-limiting at 20 requests per second.
 

@@ -13,7 +13,7 @@ type TitleValidator struct{}
 func (tv *TitleValidator) Run(param string) (isValid bool, err error) {
 	// Check for an empty param
 	if len(param) == 0 {
-		err = fmt.Errorf("error: article param %s is invalid: param cannot be empty", param)
+		err = fmt.Errorf("error: article param is invalid: param cannot be empty")
 		return
 	}
 
