@@ -31,16 +31,27 @@ To run the project locally, git clone this repo and run the below command from w
 ❯ docker-compose down
 
 # Build a Docker image only without running it 
-❯ make build
+❯ make docker-build
 ```
 
-### Via local server
+### Run locally
 
 WikiViews may also be run locally without Docker for faster iteration. Local development takes advantage of the [air Go package](https://github.com/cosmtrek/air) for live reload.
+
+#### As live reload server
 
 ```bash
 ❯ go install github.com/cosmtrek/air@latest
 ❯ make run
+```
+
+WikiViews may also be run locally by compiling and running a binary
+
+#### As binary
+
+```bash
+❯ make build
+❯ ./cmd/http-server/http-server
 ```
 
 ### Running tests
@@ -59,7 +70,8 @@ Other Make targets are exposed for local development
 # Run Golang compile checks
 ❯ make vet
 
-# Reconcile modules and vendorize dependencies
+# This command performs several housekeeping functions such as `go mod tidy` and `go mod vendor`
+# It is important to run this command whenever you change a module invocation - e.g, when you add or remove an import
 ❯ make mod
 ```
 

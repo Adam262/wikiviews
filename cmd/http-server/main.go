@@ -20,7 +20,9 @@ func main() {
 	e.GET("/healthcheck", healthcheck)
 	e.GET("/pageviews", pageviewsHandler.List)
 
-	log.Fatal(e.Start(":8080"))
+	if err := e.Start(":8080"); err != http.ErrServerClosed {
+		log.Fatal(err)
+	}
 }
 
 // Healthcheck probe

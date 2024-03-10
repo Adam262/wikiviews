@@ -21,5 +21,9 @@ mod:
 	go mod vendor
 
 .PHONY: build
-build: vet test
-	docker build . --tag wikiviews
+build: vet test mod
+	go build -o ./cmd/http-server ./...
+
+.PHONY: docker-build
+docker-build: vet test mod
+	docker build . --tag wikiviews --progress=plain

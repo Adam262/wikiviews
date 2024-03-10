@@ -7,12 +7,16 @@ RUN \
     && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential
 
-ENV APP_HOME /usr/src/app/
+WORKDIR /app
 
-WORKDIR $APP_HOME
+COPY go.mod /app/
+COPY go.sum /app/
+COPY vendor/ /app/vendor/
+COPY cmd/ /app/cmd/
+COPY internal/ /app/internal/
 
-COPY . $APP_HOME
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -o $GOPATH/bin ./...
 
 EXPOSE 8080
 
-CMD ["go", "run", "main.go"]
+CMD ["http-server"]
