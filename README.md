@@ -4,8 +4,6 @@
 
 WikiViews is a simple Golang server with a single JSON endpoint, `/pageviews`. Its responsibility is to respond to user queries for monthly pageview data for English-language Wikipedia articles. Although users can alternatively query the Wikipedia API directly, WikiViews provides several enhancements such as a simplied interface and param validation.
 
-See [project instructions](./INSTRUCTIONS.md)
-
 ## Dependencies
 
 WikiViews is Dockerized. Its only dependency for running locally as a Docker container is [Docker Desktop](https://www.docker.com/products/docker-desktop/). To develop on your machine without Docker, [Golang](https://go.dev/doc/install) is required.
